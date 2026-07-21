@@ -1,0 +1,116 @@
+{
+  "hospitals": [
+    {
+      "id": "h1",
+      "name": "Ahmedabad Civil Hospital",
+      "type": "Public Hospital",
+      "city": "Ahmedabad",
+      "district": "Ahmedabad",
+      "latitude": 23.0526,
+      "longitude": 72.5973,
+      "beds": 2800,
+      "description": "Asia's largest hospital, highly vulnerable to nearby traffic pollution."
+    },
+    {
+      "id": "h2",
+      "name": "Apollo Hospitals",
+      "type": "Private Hospital",
+      "city": "Gandhinagar",
+      "district": "Gandhinagar",
+      "latitude": 23.1311,
+      "longitude": 72.6074,
+      "beds": 300,
+      "description": "Multi-specialty hospital near the Ahmedabad-Gandhinagar highway."
+    },
+    {
+      "id": "h3",
+      "name": "New Civil Hospital",
+      "type": "Public Hospital",
+      "city": "Surat",
+      "district": "Surat",
+      "latitude": 21.1738,
+      "longitude": 72.8122,
+      "beds": 1100,
+      "description": "Major hospital serving South Gujarat, near industrial zones."
+    },
+    {
+      "id": "h4",
+      "name": "SSG Hospital",
+      "type": "Public Hospital",
+      "city": "Vadodara",
+      "district": "Vadodara",
+      "latitude": 22.3021,
+      "longitude": 73.1895,
+      "beds": 1250,
+      "description": "Sir Sayajirao General Hospital, central Vadodara."
+    },
+    {
+      "id": "h5",
+      "name": "PDU Civil Hospital",
+      "type": "Public Hospital",
+      "city": "Rajkot",
+      "district": "Rajkot",
+      "latitude": 22.3060,
+      "longitude": 70.8033,
+      "beds": 800,
+      "description": "Pandit Deendayal Upadhyay Hospital."
+    }
+  ],
+  "schools": [
+    {
+      "id": "s1",
+      "name": "Indian Institute of Management Ahmedabad (IIMA)",
+      "type": "University",
+      "city": "Ahmedabad",
+      "district": "Ahmedabad",
+      "latitude": 23.0337,
+      "longitude": 72.5312,
+      "students": 1200,
+      "description": "Premier business school located in western Ahmedabad."
+    },
+    {
+      "id": "s2",
+      "name": "Nirma University",
+      "type": "University",
+      "city": "Ahmedabad",
+      "district": "Ahmedabad",
+      "latitude": 23.1293,
+      "longitude": 72.5414,
+      "students": 4500,
+      "description": "Large university campus on the SG Highway."
+    },
+    {
+      "id": "s3",
+      "name": "Sardar Vallabhbhai National Institute of Technology (SVNIT)",
+      "type": "University",
+      "city": "Surat",
+      "district": "Surat",
+      "latitude": 21.1648,
+      "longitude": 72.7838,
+      "students": 3000,
+      "description": "Engineering institute in Ichchhanath, Surat."
+    },
+    {
+      "id": "s4",
+      "name": "Maharaja Sayajirao University of Baroda (MSU)",
+      "type": "University",
+      "city": "Vadodara",
+      "district": "Vadodara",
+      "latitude": 22.3015,
+      "longitude": 73.1836,
+      "students": 35000,
+      "description": "One of the largest universities in Gujarat."
+    },
+    {
+      "id": "s5",
+      "name": "Delhi Public School",
+      "type": "K-12 School",
+      "city": "Bopal, Ahmedabad",
+      "district": "Ahmedabad",
+      "latitude": 23.0233,
+      "longitude": 72.4633,
+      "students": 2500,
+      "description": "Large private school with high volume of children vulnerable to AQI spikes."
+    }
+  ]
+}

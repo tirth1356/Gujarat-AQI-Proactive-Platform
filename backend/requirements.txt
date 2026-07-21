@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+geoalchemy2
+alembic
+asyncpg
+psycopg2-binary
+pydantic
+pydantic-settings
+python-dotenv
+httpx
+redis
+groq
