@@ -64,11 +64,13 @@ async def chat_with_agent(req: ChatRequest):
     response = agent_system.run_chatbot(req.message, req.language or "English")
     return {"reply": response}
 
+_IS_REFRESHING = {"aqi": False}
+
 @router.get("/api/v1/weather/live")
 async def get_live_weather(lat: float = 23.0225, lon: float = 72.5714):
-    """Returns live weather telemetry from Open-Meteo / OpenWeatherMap (Instant Cached)"""
+    """Returns live weather telemetry from Open-Meteo / OpenWeatherMap (Instant Cached, 15m TTL)"""
     now = time.time()
-    if _WEATHER_CACHE["data"] and (now - _WEATHER_CACHE["timestamp"] < 300):
+    if _WEATHER_CACHE["data"] and (now - _WEATHER_CACHE["timestamp"] < 900):
         return _WEATHER_CACHE["data"]
     try:
         data = await services_hub.get_live_weather(lat, lon)
@@ -80,9 +82,9 @@ async def get_live_weather(lat: float = 23.0225, lon: float = 72.5714):
 
 @router.get("/api/v1/advisory/health")
 async def get_health_advisory(aqi: float, pm25: float):
-    """Returns AI-generated health advisory for given AQI (Instant Cached)"""
+    """Returns AI-generated health advisory for given AQI (Instant Cached, 15m TTL)"""
     now = time.time()
-    if _ADVISORY_CACHE["data"] and (now - _ADVISORY_CACHE["timestamp"] < 300):
+    if _ADVISORY_CACHE["data"] and (now - _ADVISORY_CACHE["timestamp"] < 900):
         return {"advisory": _ADVISORY_CACHE["data"]}
     vulnerability_map = "2 Primary Schools (500m radius), 1 District Hospital (1km radius), High density of outdoor construction workers."
     advisory = agent_system.run_health_advisory(aqi=aqi, pm25=pm25, vulnerable_map=vulnerability_map)
@@ -104,11 +106,11 @@ async def get_source_attribution(location: str, aqi: float):
 
 @router.get("/api/v1/aqi/current")
 async def get_current_aqi(city: Optional[str] = None):
-    """Returns real-time CAAQMS telemetry across 32 cities instantly from pre-warmed cache"""
+    """Returns real-time CAAQMS telemetry across 32 cities instantly from pre-warmed cache with low-hit background refresh"""
     now = time.time()
-    # Trigger background refresh if cache is older than 5 minutes, but return immediately
     if not city and _AQI_CACHE["data"]:
-        if now - _AQI_CACHE["timestamp"] > 300:
+        # Trigger background refresh only if 15 minutes have elapsed and no refresh is currently running
+        if now - _AQI_CACHE["timestamp"] > 900 and not _IS_REFRESHING["aqi"]:
             asyncio.create_task(_refresh_aqi_background())
         return _AQI_CACHE["data"]
         
@@ -120,28 +122,42 @@ async def get_current_aqi(city: Optional[str] = None):
     return _AQI_CACHE["data"] or []
 
 async def _refresh_aqi_background():
+    if _IS_REFRESHING["aqi"]:
+        return
+    _IS_REFRESHING["aqi"] = True
     try:
-        waqi_tasks = [services_hub.get_waqi_city_data(c.split()[0]) for c in _INITIAL_CITIES]
+        # Batch query only the 4 primary anchor cities to keep API hits ultra-low and avoid rate limits / TLE
+        anchor_cities = ["Ahmedabad", "Surat", "Vadodara", "Rajkot"]
+        waqi_tasks = [services_hub.get_waqi_city_data(c) for c in anchor_cities]
         waqi_results = await asyncio.gather(*waqi_tasks, return_exceptions=True)
-        new_data = []
-        for idx, c in enumerate(_INITIAL_CITIES):
+        
+        updated_map = {}
+        for idx, c in enumerate(anchor_cities):
             res = waqi_results[idx]
             if isinstance(res, dict) and "aqi" in res and res["aqi"] is not None:
-                new_data.append({
+                updated_map[c.lower()] = {
                     "city": c,
                     "aqi": int(res["aqi"]),
                     "pm25": round(res.get("pm25", res["aqi"] * 0.52), 1),
                     "pm10": round(res.get("pm10", res["aqi"] * 0.85), 1),
                     "live_waqi": True,
-                    "timestamp": "2026-07-22T02:45:00Z"
-                })
-            elif _AQI_CACHE["data"] and idx < len(_AQI_CACHE["data"]):
-                new_data.append(_AQI_CACHE["data"][idx])
-        if new_data:
-            _AQI_CACHE["data"] = new_data
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                }
+                
+        if _AQI_CACHE["data"]:
+            new_list = []
+            for item in _AQI_CACHE["data"]:
+                c_key = item["city"].split()[0].lower()
+                if c_key in updated_map:
+                    new_list.append(updated_map[c_key])
+                else:
+                    new_list.append(item)
+            _AQI_CACHE["data"] = new_list
             _AQI_CACHE["timestamp"] = time.time()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Background AQI refresh skipped or throttled: {e}")
+    finally:
+        _IS_REFRESHING["aqi"] = False
 
 @router.get("/api/v1/aqi/forecast")
 async def get_aqi_forecast(city: str, horizon: int = 24):

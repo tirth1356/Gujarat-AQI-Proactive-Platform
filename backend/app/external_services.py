@@ -1,11 +1,17 @@
 import os
 import httpx
 import logging
+import asyncio
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+# Global concurrency throttling semaphores to prevent TLE, connection pool limits, or 429 Rate Limits
+_WAQI_SEMAPHORE = asyncio.Semaphore(3)
+_TRAFFIC_SEMAPHORE = asyncio.Semaphore(3)
+_WEATHER_SEMAPHORE = asyncio.Semaphore(2)
 
 class ExternalServicesHub:
     """Hub integrating live external telemetry: WAQI, TomTom, OpenMeteo, OpenWeather, NASA FIRMS, Planet, OSRM"""
@@ -20,28 +26,29 @@ class ExternalServicesHub:
         logger.info("Initialized ExternalServicesHub with keys: WAQI, TomTom, OpenMeteo, OpenWeather, NASA FIRMS, Planet")
 
     async def get_live_weather(self, lat: float = 23.0225, lon: float = 72.5714) -> Dict[str, Any]:
-        """Fetch live temperature, wind speed, relative humidity from Open-Meteo & OpenWeatherMap"""
+        """Fetch live temperature, wind speed, relative humidity from Open-Meteo with semaphore throttling"""
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                res = await client.get(
-                    self.open_meteo_url,
-                    params={
-                        "latitude": lat,
-                        "longitude": lon,
-                        "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m"
-                    }
-                )
-                if res.status_code == 200:
-                    data = res.json().get("current", {})
-                    return {
-                        "temperature": data.get("temperature_2m", 32.4),
-                        "humidity": data.get("relative_humidity_2m", 58.0),
-                        "wind_speed": data.get("wind_speed_10m", 14.2),
-                        "wind_direction": data.get("wind_direction_10m", 240),
-                        "source": "Open-Meteo Live API"
-                    }
+            async with _WEATHER_SEMAPHORE:
+                async with httpx.AsyncClient(timeout=2.5) as client:
+                    res = await client.get(
+                        self.open_meteo_url,
+                        params={
+                            "latitude": lat,
+                            "longitude": lon,
+                            "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m"
+                        }
+                    )
+                    if res.status_code == 200:
+                        data = res.json().get("current", {})
+                        return {
+                            "temperature": data.get("temperature_2m", 32.4),
+                            "humidity": data.get("relative_humidity_2m", 58.0),
+                            "wind_speed": data.get("wind_speed_10m", 14.2),
+                            "wind_direction": data.get("wind_direction_10m", 240),
+                            "source": "Open-Meteo Live API"
+                        }
         except Exception as e:
-            logger.warning(f"Open-Meteo fetch failed: {e}")
+            logger.warning(f"Open-Meteo fetch failed or throttled: {e}")
             
         return {
             "temperature": 32.4,
@@ -52,50 +59,52 @@ class ExternalServicesHub:
         }
 
     async def get_waqi_city_data(self, city_name: str) -> Dict[str, Any]:
-        """Fetch real-time station AQI from World Air Quality Index (WAQI)"""
+        """Fetch real-time station AQI from World Air Quality Index (WAQI) with strict rate-limit protection"""
         if not self.waqi_key:
             return {}
         try:
-            async with httpx.AsyncClient(timeout=3.5) as client:
-                res = await client.get(f"https://api.waqi.info/feed/{city_name}/?token={self.waqi_key}")
-                if res.status_code == 200:
-                    data = res.json().get("data", {})
-                    if isinstance(data, dict) and "aqi" in data and isinstance(data["aqi"], (int, float)):
-                        iaqi = data.get("iaqi", {})
-                        return {
-                            "aqi": data["aqi"],
-                            "pm25": iaqi.get("pm25", {}).get("v", data["aqi"] * 0.52),
-                            "pm10": iaqi.get("pm10", {}).get("v", data["aqi"] * 0.85),
-                            "live_waqi": True,
-                            "station": data.get("city", {}).get("name", f"{city_name} CAAQMS")
-                        }
+            async with _WAQI_SEMAPHORE:
+                async with httpx.AsyncClient(timeout=2.5) as client:
+                    res = await client.get(f"https://api.waqi.info/feed/{city_name}/?token={self.waqi_key}")
+                    if res.status_code == 200:
+                        data = res.json().get("data", {})
+                        if isinstance(data, dict) and "aqi" in data and isinstance(data["aqi"], (int, float)):
+                            iaqi = data.get("iaqi", {})
+                            return {
+                                "aqi": data["aqi"],
+                                "pm25": iaqi.get("pm25", {}).get("v", data["aqi"] * 0.52),
+                                "pm10": iaqi.get("pm10", {}).get("v", data["aqi"] * 0.85),
+                                "live_waqi": True,
+                                "station": data.get("city", {}).get("name", f"{city_name} CAAQMS")
+                            }
         except Exception as e:
-            logger.warning(f"WAQI API fetch failed for {city_name}: {e}")
+            logger.warning(f"WAQI API fetch failed or rate-limited for {city_name}: {e}")
         return {}
 
     async def get_tomtom_traffic(self, lat: float, lon: float) -> Dict[str, Any]:
-        """Fetch real-time traffic flow speed & congestion index via TomTom API"""
+        """Fetch real-time traffic flow speed & congestion index via TomTom API with concurrency limits"""
         if not self.tomtom_key:
             return {"speed_kmh": 24, "free_flow_speed": 50, "congestion_level": "Moderate Congestion (TomTom Telemetry)"}
         try:
-            async with httpx.AsyncClient(timeout=3.5) as client:
-                res = await client.get(
-                    f"https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json",
-                    params={"key": self.tomtom_key, "point": f"{lat},{lon}"}
-                )
-                if res.status_code == 200:
-                    flow = res.json().get("flowSegmentData", {})
-                    current_speed = flow.get("currentSpeed", 25)
-                    free_speed = flow.get("freeFlowSpeed", 50)
-                    ratio = current_speed / max(1, free_speed)
-                    level = "Severe Congestion" if ratio < 0.4 else "Moderate Congestion" if ratio < 0.75 else "Free Flow"
-                    return {
-                        "speed_kmh": current_speed,
-                        "free_flow_speed": free_speed,
-                        "congestion_level": f"{level} (TomTom Live API)"
-                    }
+            async with _TRAFFIC_SEMAPHORE:
+                async with httpx.AsyncClient(timeout=2.5) as client:
+                    res = await client.get(
+                        f"https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json",
+                        params={"key": self.tomtom_key, "point": f"{lat},{lon}"}
+                    )
+                    if res.status_code == 200:
+                        flow = res.json().get("flowSegmentData", {})
+                        current_speed = flow.get("currentSpeed", 25)
+                        free_speed = flow.get("freeFlowSpeed", 50)
+                        ratio = current_speed / max(1, free_speed)
+                        level = "Severe Congestion" if ratio < 0.4 else "Moderate Congestion" if ratio < 0.75 else "Free Flow"
+                        return {
+                            "speed_kmh": current_speed,
+                            "free_flow_speed": free_speed,
+                            "congestion_level": f"{level} (TomTom Live API)"
+                        }
         except Exception as e:
-            logger.warning(f"TomTom API fetch failed: {e}")
+            logger.warning(f"TomTom API fetch failed or rate-limited: {e}")
         return {"speed_kmh": 22, "free_flow_speed": 50, "congestion_level": "Heavy Diesel Corridor Congestion (TomTom API)"}
 
     def get_satellite_anomalies(self, zone: str) -> str:

@@ -46,11 +46,12 @@ class AQIAgentsSystem:
                 ],
                 model=self.model_name,
                 temperature=0.3,
-                max_tokens=600
+                max_tokens=600,
+                timeout=3.5
             )
             return chat_completion.choices[0].message.content.strip()
         except Exception as e:
-            logger.error(f"Groq API Error: {e}")
+            logger.warning(f"Groq API call rate-limited or timed out ({e}), using instant calibrated fallback.")
             return fallback
 
     def run_source_attribution(self, location: str, aqi: float, nearby_entities: str) -> str:
