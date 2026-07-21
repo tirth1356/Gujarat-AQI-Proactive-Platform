@@ -8,9 +8,9 @@ export const metadata: Metadata = {
   title: "Gujarat Air Quality Intelligence Platform | Multi-Agency Urban Suite",
   description: "Enterprise AI-Powered Urban Air Quality Intelligence Platform for Gujarat fusing CAAQMS, TomTom Telemetry, NASA FIRMS & Planet Satellite Layers across 32 urban centers.",
   icons: {
-    icon: "/icon",
-    shortcut: "/favicon.ico",
-    apple: "/icon",
+    icon: "/icon?v=2",
+    shortcut: "/icon?v=2",
+    apple: "/icon?v=2",
   },
 };
 
