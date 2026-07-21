@@ -61,7 +61,7 @@ export default function GujaratMap({
   enforcementData: any[],
   onSelectCity?: (city: string, aqi: number) => void 
 }) {
-  const [isSatellite, setIsSatellite] = useState(false);
+  const [isSatellite, setIsSatellite] = useState(true);
 
   // Custom pulsing divIcon for markers
   const createCustomIcon = (color: string) => {

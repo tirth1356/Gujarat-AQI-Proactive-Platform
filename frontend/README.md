@@ -1,4 +1,4 @@
-# 🌍 Vayu AI: Urban Air Quality Intelligence Platform for Gujarat
+# 🌍 Urban Air Quality Intelligence Platform for Gujarat
 
 [![Live Demo on Vercel](https://img.shields.io/badge/🚀_Live_Demo-Try_Now_on_Vercel-f59e0b?style=for-the-badge&logo=vercel&logoColor=white)](https://gujarat-aqi-platform.vercel.app/)
 [![Groq AI Powered](https://img.shields.io/badge/🤖_Multi--Agent_AI-Groq_Llama--3.1-emerald?style=for-the-badge)](https://console.groq.com/)

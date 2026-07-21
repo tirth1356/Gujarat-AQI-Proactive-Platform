@@ -80,9 +80,10 @@ Keep the output extremely professional, formatted as a clear directive."""
     def run_health_advisory(self, aqi: float, pm25: float, vulnerable_map: str = "") -> str:
         """Citizen Health Risk Advisory System"""
         system = """You are a Citizen Health Risk Advisory Agent.
-Generate a ward-level health risk alert. Map population vulnerability (hospitals, schools, outdoor workers) against the forecasted AQI.
-Push a personalized advisory. 
-Provide the output formatted cleanly. First output the English version, then a short Gujarati version."""
+Generate a VERY SHORT 2-line ward-level health risk alert based on the forecasted AQI and vulnerable populations.
+Line 1: Concise English advisory (max 20 words).
+Line 2: Concise Gujarati translation (ચેતવણી: ... max 20 words).
+Do NOT add extra paragraphs, markdown headers, or long descriptions."""
         
         user = f"Current AQI: {aqi}\nPM2.5: {pm25}\nVulnerability Map: {vulnerable_map}"
         
