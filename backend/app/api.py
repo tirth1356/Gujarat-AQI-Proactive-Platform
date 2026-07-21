@@ -2,18 +2,25 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import random
+import asyncio
+import time
 from app.agents import agent_system
 from app.external_services import services_hub
 
 router = APIRouter()
 
+# High-speed in-memory caches to prevent deployment timeouts and latency bottlenecks
+_AQI_CACHE = {"data": None, "timestamp": 0}
+_ADVISORY_CACHE = {"data": None, "timestamp": 0}
+
 class ChatRequest(BaseModel):
     message: str
+    language: Optional[str] = "English"
 
 @router.post("/api/v1/chat")
 async def chat_with_agent(req: ChatRequest):
-    """Multilingual Support Chatbot Endpoint"""
-    response = agent_system.run_chatbot(req.message)
+    """Multilingual Support Chatbot Endpoint with Explicit Language Selection"""
+    response = agent_system.run_chatbot(req.message, req.language or "English")
     return {"reply": response}
 
 @router.get("/api/v1/weather/live")
@@ -23,9 +30,14 @@ async def get_live_weather(lat: float = 23.0225, lon: float = 72.5714):
 
 @router.get("/api/v1/advisory/health")
 async def get_health_advisory(aqi: float, pm25: float):
-    """Returns AI-generated health advisory for given AQI"""
+    """Returns AI-generated health advisory for given AQI (Cached for 60s for instant load)"""
+    now = time.time()
+    if _ADVISORY_CACHE["data"] and (now - _ADVISORY_CACHE["timestamp"] < 60):
+        return {"advisory": _ADVISORY_CACHE["data"]}
     vulnerability_map = "2 Primary Schools (500m radius), 1 District Hospital (1km radius), High density of outdoor construction workers."
     advisory = agent_system.run_health_advisory(aqi=aqi, pm25=pm25, vulnerable_map=vulnerability_map)
+    _ADVISORY_CACHE["data"] = advisory
+    _ADVISORY_CACHE["timestamp"] = now
     return {"advisory": advisory}
 
 @router.get("/api/v1/attribution/source")
@@ -37,6 +49,10 @@ async def get_source_attribution(location: str, aqi: float):
 
 @router.get("/api/v1/aqi/current")
 async def get_current_aqi(city: Optional[str] = None):
+    now = time.time()
+    if not city and _AQI_CACHE["data"] and (now - _AQI_CACHE["timestamp"] < 60):
+        return _AQI_CACHE["data"]
+
     # Expanded comprehensive list of 32 Gujarat cities & industrial clusters
     cities = [
         "Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", 
@@ -48,14 +64,17 @@ async def get_current_aqi(city: Optional[str] = None):
         "Kalol", "Kadi", "Deesa", "Amreli", "Botad"
     ] if not city else [city]
     
+    # Run all 32 external API calls in parallel using asyncio.gather for sub-second execution
+    waqi_tasks = [services_hub.get_waqi_city_data(c.split()[0]) for c in cities]
+    waqi_results = await asyncio.gather(*waqi_tasks, return_exceptions=True)
+    
     data = []
-    for c in cities:
-        # Check if live WAQI data is available or synthesize realistic calibrated data
-        live_waqi = await services_hub.get_waqi_city_data(c.split()[0])
-        if live_waqi and "aqi" in live_waqi:
-            base_aqi = live_waqi["aqi"]
-            pm25 = live_waqi.get("pm25", base_aqi * 0.52)
-            pm10 = live_waqi.get("pm10", base_aqi * 0.85)
+    for idx, c in enumerate(cities):
+        res = waqi_results[idx]
+        if isinstance(res, dict) and "aqi" in res and res["aqi"] is not None:
+            base_aqi = res["aqi"]
+            pm25 = res.get("pm25", base_aqi * 0.52)
+            pm10 = res.get("pm10", base_aqi * 0.85)
             is_live = True
         else:
             base_aqi = random.randint(70, 210)
@@ -73,6 +92,10 @@ async def get_current_aqi(city: Optional[str] = None):
             "live_waqi": is_live,
             "timestamp": "2026-07-22T01:30:00Z"
         })
+    
+    if not city:
+        _AQI_CACHE["data"] = data
+        _AQI_CACHE["timestamp"] = now
     return data
 
 @router.get("/api/v1/aqi/forecast")

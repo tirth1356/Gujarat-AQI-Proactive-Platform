@@ -37,6 +37,7 @@ export default function Dashboard() {
 
   // Chatbot State
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatLanguage, setChatLanguage] = useState<"English" | "Gujarati" | "Hindi">("English");
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<{role: "user" | "bot", content: string}[]>([
     { role: "bot", content: "Namaste! I am the Gujarat Urban Air Quality AI Agent. Ask me anything about pollution, AQI, or enforcement in the state (English/Gujarati/Hindi)." }
@@ -192,7 +193,7 @@ export default function Dashboard() {
       const res = await fetch(`${API_BASE}/api/v1/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText })
+        body: JSON.stringify({ message: userText, language: chatLanguage })
       });
       const data = await res.json();
       setChatHistory(prev => [...prev, { role: "bot", content: data.reply }]);
@@ -1104,14 +1105,25 @@ export default function Dashboard() {
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               className="mb-4 w-80 md:w-96 h-[460px] bg-zinc-950 border border-stone-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
             >
-              <div className="bg-stone-900 p-4 border-b border-stone-700 flex justify-between items-center">
-                <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
-                  <MessageSquare className="w-5 h-5" />
-                  Multilingual AI Support Agent
+              <div className="bg-stone-900 p-3.5 border-b border-stone-700 flex justify-between items-center">
+                <div className="flex items-center gap-2 text-amber-500 font-bold text-xs">
+                  <MessageSquare className="w-4 h-4" />
+                  AI Citizen Agent
                 </div>
-                <button onClick={() => setIsChatOpen(false)} className="text-stone-400 hover:text-white transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={chatLanguage}
+                    onChange={(e) => setChatLanguage(e.target.value as any)}
+                    className="bg-zinc-950 border border-stone-700 rounded-lg px-2 py-1 text-[11px] text-stone-300 focus:outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    <option value="English">🌐 English</option>
+                    <option value="Gujarati">🌐 ગુજરાતી (Gujarati)</option>
+                    <option value="Hindi">🌐 हिन्दी (Hindi)</option>
+                  </select>
+                  <button onClick={() => setIsChatOpen(false)} className="text-stone-400 hover:text-white transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5">

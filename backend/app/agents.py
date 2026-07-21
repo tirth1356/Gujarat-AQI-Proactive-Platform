@@ -89,31 +89,31 @@ Provide the output formatted cleanly. First output the English version, then a s
         fallback = "Alert: High PM2.5. Vulnerable populations must stay indoors.\nચેતવણી: ઉચ્ચ PM2.5. ઘરની અંદર રહો."
         return self._call_groq(system, user, fallback)
 
-    def _get_chatbot_fallback(self, message: str) -> str:
+    def _get_chatbot_fallback(self, message: str, language: str = "English") -> str:
         msg_lower = message.lower()
-        # Gujarati character/word detection
-        if any(char in message for char in ["\u0a80", "\u0a81", "\u0a82", "\u0a83", "\u0a85", "\u0a86", "\u0a87", "\u0a88", "\u0a89", "\u0a8a", "\u0a8f", "\u0a90", "\u0a93", "\u0a94", "\u0a95", "\u0a96", "\u0a97", "\u0a98", "\u0a9a", "\u0a9b", "\u0a9c", "\u0a9d", "\u0a9f", "\u0aa0", "\u0aa1", "\u0aa2", "\u0aa3", "\u0aa4", "\u0aa5", "\u0aa6", "\u0aa7", "\u0aa8", "\u0aaa", "\u0aab", "\u0aac", "\u0aad", "\u0aae", "\u0aaf", "\u0ab0", "\u0ab2", "\u0ab5", "\u0ab6", "\u0ab7", "\u0ab8", "\u0ab9", "\u0abe", "\u0abf", "\u0ac0", "\u0ac1", "\u0ac2", "\u0ac7", "\u0ac8", "\u0acb", "\u0acc", "\u0acd"]) or any(w in msg_lower for w in ["kem cho", "gujarati", "surat", "ahmedabad", "pradushan"]):
+        # If user explicitly selected Gujarati or typed in Gujarati script
+        if language in ["Gujarati", "Gujarati/ગુજરાતી", "ગુજરાતી"] or any(char in message for char in ["\u0a80", "\u0a81", "\u0a82", "\u0a83", "\u0a85", "\u0a86", "\u0a87", "\u0a88", "\u0a89", "\u0a8a", "\u0a8f", "\u0a90", "\u0a93", "\u0a94", "\u0a95", "\u0a96", "\u0a97", "\u0a98", "\u0a9a", "\u0a9b", "\u0a9c", "\u0a9d", "\u0a9f", "\u0aa0", "\u0aa1", "\u0aa2", "\u0aa3", "\u0aa4", "\u0aa5", "\u0aa6", "\u0aa7", "\u0aa8", "\u0aaa", "\u0aab", "\u0aac", "\u0aad", "\u0aae", "\u0aaf", "\u0ab0", "\u0ab2", "\u0ab5", "\u0ab6", "\u0ab7", "\u0ab8", "\u0ab9", "\u0abe", "\u0abf", "\u0ac0", "\u0ac1", "\u0ac2", "\u0ac7", "\u0ac8", "\u0acb", "\u0acc", "\u0acd"]):
             return "નમસ્તે! હું ગુજરાત અર્બન એર ક્વોલિટી AI એજન્ટ છું. અમારા પ્લેટફોર્મ પર રાજ્યના 32 મુખ્ય ઔદ્યોગિક અને શહેરી કેન્દ્રોનું રીયલ-ટાઇમ મોનિટરિંગ અને એનાલિસિસ ઉપલબ્ધ છે. અંકલેશ્વર અને મોરબી જેવા ઔદ્યોગિક ઝોનમાં વાયુ પ્રદૂષણ અને પોલિસી ઈમ્પેક્ટ માટે ડેશબોર્ડના ટેબ્સ જુઓ."
-        # Hindi character/word detection
-        elif any(char in message for char in ["\u0900", "\u0901", "\u0902", "\u0903", "\u0905", "\u0906", "\u0907", "\u0908", "\u0909", "\u090a", "\u090f", "\u0910", "\u0913", "\u0914", "\u0915", "\u0916", "\u0917", "\u0918", "\u091a", "\u091b", "\u091c", "\u091d", "\u091f", "\u0920", "\u0921", "\u0922", "\u0923", "\u0924", "\u0925", "\u0926", "\u0927", "\u0928", "\u092a", "\u092b", "\u092c", "\u092d", "\u092e", "\u092f", "\u0930", "\u0932", "\u0935", "\u0936", "\u0937", "\u0938", "\u0939", "\u093e", "\u093f", "\u0940", "\u0941", "\u0942", "\u0947", "\u0948", "\u094b", "\u094c", "\u094d"]) or any(w in msg_lower for w in ["namaste", "hindi", "pradushan", "hawa"]):
+        # If user explicitly selected Hindi or typed in Devanagari script
+        elif language in ["Hindi", "Hindi/हिंदी", "हिंदी"] or any(char in message for char in ["\u0900", "\u0901", "\u0902", "\u0903", "\u0905", "\u0906", "\u0907", "\u0908", "\u0909", "\u090a", "\u090f", "\u0910", "\u0913", "\u0914", "\u0915", "\u0916", "\u0917", "\u0918", "\u091a", "\u091b", "\u091c", "\u091d", "\u091f", "\u0920", "\u0921", "\u0922", "\u0923", "\u0924", "\u0925", "\u0926", "\u0927", "\u0928", "\u092a", "\u092b", "\u092c", "\u092d", "\u092e", "\u092f", "\u0930", "\u0932", "\u0935", "\u0936", "\u0937", "\u0938", "\u0939", "\u093e", "\u093f", "\u0940", "\u0941", "\u0942", "\u0947", "\u0948", "\u094b", "\u094c", "\u094d"]):
             return "नमस्ते! मैं गुजरात शहरी वायु गुणवत्ता एआई एजेंट हूँ। हमारा प्लेटफार्म 32 प्रमुख शहरी और औद्योगिक केंद्रों (जैसे अंकलेश्वर, सूरत, अहमदाबाद, और वापी) के रियल-टाइम AQI, सैटेलाइट थर्मल डेटा और यातायात को ट्रैक करता है। आप पॉलिसी सिम्युलेटर और सोर्स एट्रिब्यूशन टैब में विस्तृत विश्लेषण देख सकते हैं।"
-        # English / General Check
-        elif any(w in msg_lower for w in ["aqi", "air", "pollution", "surat", "ahmedabad", "ankleshwar", "policy", "sensor", "map", "data", "status", "morbi", "vapi", "help", "hello", "hi"]):
-            return "Hello! I am the Gujarat Urban Air Quality AI Agent. Our platform fuses real-time CAAQMS station data, TomTom traffic speed feeds, and NASA FIRMS / Planet satellite layers across 32 major Gujarat urban & industrial centers. You can explore source breakdowns (Industrial vs. Vehicular vs. Fugitive Dust) or simulate 72-hour policy interventions right from the dashboard tabs!"
+        # English / Default
         else:
+            if any(w in msg_lower for w in ["aqi", "air", "pollution", "surat", "ahmedabad", "ankleshwar", "policy", "sensor", "map", "data", "status", "morbi", "vapi", "help", "hello", "hi"]):
+                return f"Hello! I am the Gujarat Urban Air Quality AI Agent. Our platform fuses real-time CAAQMS station data, TomTom traffic speed feeds, and NASA FIRMS / Planet satellite layers across 32 major Gujarat urban & industrial centers. You asked about '{message}' — you can explore exact source attribution or simulate 72-hour policy interventions right from the dashboard tabs!"
             return "I am an Urban Air Quality AI agent for the Gujarat Government platform. I am trained to assist specifically with pollution metrics, CAAQMS telemetry, municipal enforcement policies, and environmental forecasts across Gujarat."
 
-    def run_chatbot(self, message: str) -> str:
-        """Multilingual Citizen Support Chatbot"""
-        system = """You are an Urban Air Quality Intelligence Chatbot for the Gujarat Government platform.
+    def run_chatbot(self, message: str, language: str = "English") -> str:
+        """Multilingual Citizen Support Chatbot with Explicit Language Control"""
+        system = f"""You are an Urban Air Quality Intelligence Chatbot for the Gujarat Government platform.
 RULES:
 1. ONLY answer questions related to Air Quality, Pollution, Environment, Enforcement, or this dashboard.
 2. If the user asks an unrelated question (e.g. politics, coding, general knowledge), reply: "I am an Urban Air Quality agent and can only assist with pollution data and environmental policies in Gujarat."
 3. Keep answers concise, professional, and helpful.
-4. Auto-detect the language of the user's message (English, Gujarati, or Hindi) and reply in that same language."""
+4. You MUST reply STRICTLY and ONLY in {language}. Do NOT reply in any other language except {language} under any circumstances."""
         
-        user = f"User Message: {message}"
-        fallback = self._get_chatbot_fallback(message)
+        user = f"User Message: {message}\nTarget Language: {language}"
+        fallback = self._get_chatbot_fallback(message, language)
         return self._call_groq(system, user, fallback)
 
     def run_intervention_simulation(self, city: str, interventions: list, baseline_aqi: float) -> Dict[str, Any]:
